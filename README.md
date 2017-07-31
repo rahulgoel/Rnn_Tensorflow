@@ -54,4 +54,6 @@ Top Words:
 [u'battery', u'camera', u'keyboard', u'drawer', u'charger']
 [u'switch', u'set', u'problem', u'price', u'time']5B
 
-# 
+# ref
+http://bdewilde.github.io/blog/2014/09/23/intro-to-automatic-keyphrase-extraction/
+https://github.com/ematvey/tensorflow-seq2seq-tutorials/

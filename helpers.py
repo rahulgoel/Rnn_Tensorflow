@@ -1,7 +1,14 @@
-import numpy as np
+import gzip
 import nltk
+import string
+import json
 import gensim
+import random
+from nltk.stem import WordNetLemmatizer
+import numpy as np
 from nltk.tokenize import RegexpTokenizer
+import itertools
+
 def batch(inputs, max_sequence_length=None):
     """
     Args:
@@ -44,6 +51,15 @@ def parse(path):
 
     # Diff Courpus
 def extract_noun(text, grammar = r'KT: {(<JJ>* <NN.*>+ <IN>)? <JJ>* <NN.*>+}'):
+    """
+    Args:
+        text: String
+        max_sequence_length:
+            Grammar to extract phrases for the parser
+    
+    Outputs:
+        Candidate phrases
+    """
     # exclude candidates that are stop words or entirely punctuation
     punct = set(string.punctuation)
     stop_words = set(nltk.corpus.stopwords.words('english'))
@@ -53,6 +69,7 @@ def extract_noun(text, grammar = r'KT: {(<JJ>* <NN.*>+ <IN>)? <JJ>* <NN.*>+}'):
     all_chunks = list(itertools.chain.from_iterable(nltk.chunk.tree2conlltags(chunker.parse(tagged_sent))
                                                     for tagged_sent in tagged_sents))
     # join constituent chunk words into a single chunked phrase
+    wordnet_lemmatizer = nltk.stem.PorterStemmer()
     candidates = [' '.join(word for word, pos, chunk in group).lower()
                   for key, group in itertools.groupby(all_chunks, lambda (word,pos,chunk): chunk != 'O') if key]
     
@@ -66,9 +83,9 @@ def extract_candidate_words(text, good_tags=set(['JJ','JJR','JJS','NN','NNP','NN
     # tokenize and POS-tag words
     tagged_words = itertools.chain.from_iterable(nltk.pos_tag_sents(nltk.word_tokenize(sent)
                                                                     for sent in nltk.sent_tokenize(text)))
-    wordnet_lemmatizer = WordNetLemmatizer()
+    wordnet_lemmatizer = nltk.stem.PorterStemmer()
     # filter on certain POS tags and lowercase all words
-    candidates = [wordnet_lemmatizer(word.lower()) for word, tag in tagged_words
+    candidates = [wordnet_lemmatizer.stem(word.lower()) for word, tag in tagged_words
                   if tag in good_tags and word.lower() not in stop_words
                   and not all(char in punct for char in word)]
     

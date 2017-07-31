@@ -22,8 +22,9 @@ tokenizer = RegexpTokenizer(r'\w+')
 text_review = []
 text_summary = []
 vocab_set = set()
-
-for i in range(30000):
+# Corpus size, effectively toy data
+corpus_size = 30000
+for i in range(corpus_size):
     b = random.choice([auto, home, electronics, pet, beauty])
     a = b.next() 
     text = a['reviewText']
@@ -32,7 +33,7 @@ for i in range(30000):
     text_summary.append(text_target)
     vocab_set.update(tokenizer.tokenize(text))
 
-# Dictionaties to track words
+# Dictionaries to track words
 vocab_dict = {j:i for i,j in enumerate(vocab_set)}
 rev_vocab_dict ={i:j for i,j in enumerate(vocab_set)}
 vocab_size = len(vocab_set)
@@ -48,34 +49,29 @@ batches_in_epoch = 100
 
 
 print("example candidate words", extract_candidate_words(random.choice(text_review)))
-
 print("example candidate phrases", extract_noun(random.choice(text_review)))
 
 
 corpus, dic, model = score_keyphrases_by_tfidf(text_review, candidates = 'words')
-print("Extraction Example 1")
+print("Extraction Example 1, LDA on salient terms")
 print(model.print_topics(-1))
 top_words = [[w for w, word in model.show_topic(topicno, topn=5)] for topicno in range(model.num_topics)]
 for top in top_words:
     print(top)
-# for i in corpus:
-#     j = sorted(i, reverse = True, key = lambda x:x[1])
-#     for word, score in j[:1]:
-#         print dic[word], score
-#         print "\n"
-print("Extraction Example 2")
+print("Extraction Example 2: LDA on noun phrases")
 corpus, dic, model = score_keyphrases_by_tfidf(text_review, candidates = 'chunks')
 print(model.print_topics(-1))
 top_words = [[w for w, word in model.show_topic(topicno, topn=5)] for topicno in range(model.num_topics)]
 for top in top_words:
     print(top)
+# Uncomment to print words with scores5B
 # for i in corpus:
 #     j = sorted(i, reverse = True, key = lambda x:x[1])
-#     for word, score in j[:1]:
+#     for word, score in j:
 #         print dic[word], score
 #         print "\n"
-        
-# exit()
+############################################################################        
+# PART2
 #Seq2Seq Model initialized with word embeddings to summarize on summaries taking topic information into account
 def batch_data(text, text_target):
     # use iterators later
@@ -121,17 +117,14 @@ del model_word2vec
 encoder_inputs = tf.placeholder(shape=(None, None), dtype=tf.int32, name='encoder_inputs')
 decoder_targets = tf.placeholder(shape=(None, None), dtype=tf.int32, name='decoder_targets')
 encoder_topic = tf.placeholder(shape=(None , None), dtype=tf.int32, name='encoder_topic')
-
 decoder_inputs = tf.placeholder(shape=(None, None), dtype=tf.int32, name='decoder_inputs')
 
 
-# embeddings = tf.Variable(tf.random_uniform([vocab_size, input_embedding_size], -1.0, 1.0), dtype=tf.float32)
-
+# Initialize vocab to glove
 embeddings = tf.get_variable(initializer=  tf.constant_initializer(embedding), name="W", shape=embedding.shape, trainable=False)
 
 encoder_inputs_embedded = tf.nn.embedding_lookup(embeddings, encoder_inputs)
 decoder_inputs_embedded = tf.nn.embedding_lookup(embeddings, decoder_inputs)
-
 encoder_topic_embedded = tf.nn.embedding_lookup(embeddings, encoder_topic)
 
 encoder_cell = tf.contrib.rnn.LSTMCell(encoder_hidden_units)
@@ -140,10 +133,10 @@ encoder_outputs, encoder_final_state = tf.nn.dynamic_rnn(
     encoder_cell, encoder_inputs_embedded,
     dtype=tf.float32, time_major=True,
 )
-
+# We dont need encoder outputs
 del encoder_outputs
 
-
+# Concat topic and decoder inputs 
 final_decoder_input = tf.concat([decoder_inputs_embedded, encoder_topic_embedded],2)
 decoder_cell = tf.contrib.rnn.LSTMCell(decoder_hidden_units)
 decoder_outputs, decoder_final_state = tf.nn.dynamic_rnn(
